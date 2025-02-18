@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Orçamentos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ff6a00, #ff8c42);
+            color: #ffffff;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            width: 400px; /* Largura fixa */
+            text-align: center; /* Centraliza o texto */
+            margin: 0 auto; /* Centraliza o contêiner */
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #ffffff;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input, select {
+            width: calc(100% - 20px); /* Ajusta a largura considerando o padding */
+            padding: 10px;
+            margin-top: 5px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            color: #000000;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px;
+            background: #ffffff;
+            color: #ff6a00;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        #orcamento {
+            display: none;
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            text-align: left;
+            width: 400px;
+        }
+        #orcamentoImagem {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            display: none; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="formContainer">
+        <h2>Gerador de Orçamentos</h2>
+        <form id="formOrcamento">
+            <label>Nome do Cliente *</label>
+            <input type="text" id="cliente" required>
+            
+            <label>WhatsApp *</label>
+            <input type="text" id="whatsapp" required>
+            
+            <label>E-mail</label>
+            <input type="email" id="email">
+
+            <label>Endereço</label>
+            <input type="text" id ="endereco">
+            
+            <label>Quantidade de Consumo de Energia (kWh) *</label>
+            <input type="number" id="consumo" required>
+            
+            <label>Tipo de Padrão</label>
+            <select id="padrao">
+                <option>Monofásico</option>
+                <option>Bifásico</option>
+                <option>Trifásico</option>
+            </select>
+            
+            <label>Consumo Isento (Geração Própria)</label>
+            <input type="number" id="isento" value="0">
+            
+            <label>Desconto (%)</label>
+            <input type="number" id="desconto" value="0">
+            
+            <label>Nome do Vendedor</label>
+            <input type="text" id="vendedor">
+
+            
+            
+            <button type="button" onclick="gerarOrcamento()">Gerar Orçamento</button>
+        </form>
+    </div>
+    
+    <div id="orcamento">
+        <!-- Link da imagem do orçamento -->
+        <img src="https://github.com/KiqProgramador/Site-flex/blob/main/or%C3%A7amento.png" alt="Orçamento Gerado" id="orcamentoImagem"> 
+        <h2>Orçamento Gerado</h2>
+        <p><strong>Nome do Cliente:</strong> <span id="resCliente"></span></p>
+        <p><strong>Endereço:</strong> <span id="resendereco"></span></p>
+        <p><strong>WhatsApp:</strong> <span id="resWhatsApp"></span></p>
+        <p><strong>Consumo Total:</strong> <span id="resConsumo"></span> kWh</p>
+        <p><strong>Consumo Isento:</strong> <span id="resIsento"></span> kWh</p>
+        <p><strong>Valor Sem Desconto:</strong> R$ <span id="resValorSemDesconto"></span></p>
+        <p><strong>Valor Com Desconto:</strong> R$ <span id="resValorComDesconto"></span></p>
+        <p><strong>Nome do Vendedor:</strong> <span id="resVendedor"></span></p>
+        <button onclick="voltar()">Voltar</button>
+        <button onclick="BaixarPDF()">Baixar PDF</button>
+    </div>
+    
+    <script>
+        function gerarOrcamento() {
+                let cliente = document.getElementById("cliente").value;
+                let whatsapp = document.getElementById("whatsapp").value;
+                let consumo = parseFloat(document.getElementById("consumo").value);
+                let isento = parseFloat(document.getElementById("isento").value);
+                let desconto = parseFloat(document.getElementById("desconto").value);
+                let vendedor = document.getElementById("vendedor").value;
+                let email = document.getElementById("email").value;
+                let endereco = document.getElementById("endereco").value;
+                let TipoPadrao = document.getElementById("padrao").value;
+
+                let Data = new Date().toLocaleDateString('pt-BR');  
+                let Vencimento = new Date();  
+                Vencimento.setDate(Vencimento.getDate() + 15);  
+                let VencimentoFormatado = Vencimento.toLocaleDateString('pt-BR');
+
+                let custoPorKWh = 1.01;
+                let taxaIluminacao = 30.70;
+                let TaxaCemig;
+                
+                switch (TipoPadrao) {
+                    case "Monofásico":
+                        TaxaCemig = 30 * custoPorKWh;
+                        break; 
+                    case "Bifásico":
+                        TaxaCemig = 50 * custoPorKWh;
+                        break;
+                    case "Trifásico":
+                        TaxaCemig = 100 * custoPorKWh;
+                        break;
+                    default:
+                        break;
+                }
+
+                let ValorEnergia = consumo * custoPorKWh;
+                let ValorIsento = isento * custoPorKWh;
+                let ValorAntigo = ValorEnergia + taxaIluminacao;
+                let FaturaFlex = ValorAntigo - ValorIsento;
+                let FaturaConcessionaria = TaxaCemig + taxaIluminacao;
+                let ValorNovo = FaturaFlex + FaturaConcessionaria;
+                
+                document.getElementById("resCliente").textContent = cliente;
+                document.getElementById("resendereco").textContent = endereco
+                document.getElementById("resWhatsApp").textContent = whatsapp;
+                document.getElementById("resConsumo").textContent = consumo;
+                document.getElementById("resIsento").textContent = isento;
+                document.getElementById("resValorSemDesconto").textContent = ValorAntigo.toFixed(2);
+                document.getElementById("resValorComDesconto").textContent = ValorNovo.toFixed(2);
+                document.getElementById("resVendedor").textContent = vendedor;
+                
+                document.getElementById("formContainer").style.display = "none";
+                document.getElementById("orcamento").style.display = "block";
+                
+                BaixarPDF();
+            }
+
+        function LimparTelaInicial() {
+            document.getElementById("cliente").value = "";
+            document.getElementById("whatsapp").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("endereco").value = "";
+            document.getElementById("consumo").value = "";
+            document.getElementById("padrao").selectedIndex = 0; 
+            document.getElementById("isento").value = "0";
+            document.getElementById("desconto").value = "0";
+            document.getElementById("vendedor").value = "";
+        }
+
+        function voltar() {
+            LimparTelaInicial();
+            document.getElementById("formContainer").style.display = "block";
+            document.getElementById("orcamento").style.display = "none";
+        }
+
+        function BaixarPDF() {
+            let cliente = document.getElementById("cliente").value;
+            let whatsapp = document.getElementById("whatsapp").value;
+            let consumo = parseFloat(document.getElementById("consumo").value);
+            let isento = parseFloat(document.getElementById("isento").value);
+            let desconto = parseFloat(document.getElementById("desconto").value);
+            let vendedor = document.getElementById("vendedor").value;
+            let email = document.getElementById("email").value;
+            let endereco = document.getElementById("endereco").value;
+            let TipoPadrao = document.getElementById("padrao").value;
+
+            let Data = new Date().toLocaleDateString('pt-BR');  
+            let Vencimento = new Date();  
+            Vencimento.setDate(Vencimento.getDate() + 15);  
+            let VencimentoFormatado = Vencimento.toLocaleDateString('pt-BR');
+
+            let custoPorKWh = 1.01;
+            let taxaIluminacao = 30.70;
+            let TaxaCemig;
+            
+            switch (TipoPadrao) {
+                case "Monofásico":
+                    TaxaCemig = 30 * custoPorKWh;
+                    break; 
+                case "Bifásico":
+                    TaxaCemig = 50 * custoPorKWh;
+                    break;
+                case "Trifásico":
+                    TaxaCemig = 100 * custoPorKWh;
+                    break;
+                default:
+                    break;
+            }
+
+            let ValorEnergia = consumo * custoPorKWh;
+            let ValorIsento = isento * custoPorKWh;
+            let ValorAntigo = ValorEnergia + taxaIluminacao;
+            let FaturaFlex = ValorAntigo - ValorIsento;
+            let FaturaConcessionaria = TaxaCemig + taxaIluminacao;
+            let ValorNovo = FaturaFlex + FaturaConcessionaria;
+            let EconomiaMensal = ValorAntigo - ValorNovo;
+            let EconomiaAnual = EconomiaMensal * 12;
+
+            let newWindow = window.open('', '', 'width=900,height=1600');
+            newWindow.document.write('<html><head><title>Orçamento Gerado - Flex Energy</title><style>');
+            newWindow.document.write('body { margin: 0; padding: 0; position: relative; }');
+            newWindow.document.write('img { width: 100%; height: auto; display: block; }');
+            newWindow.document.write('p { position: absolute; top: 50px; left: 20px; color: white; font-size: 18px; background-color: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; }');
+            newWindow.document.write('</style></head><body>');
+            // Link da imagem do orçamento gerado 
+            newWindow.document.write('<img src="http://localhost:8000/IMG2.PNG"/>');
+
+            newWindow.document.write('<p style="top: 393px; left: 590px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + vendedor + '</p>');
+            newWindow.document.write('<p style="top: 298px; left: 585px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + Data + '</p>');
+            newWindow.document.write('<p style="top: 345px; left: 585px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + VencimentoFormatado + '</p>');
+
+            newWindow.document.write('<p style="top: 301px; left: 83px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + cliente + '</p>');
+            newWindow.document.write('<p style="top: 350px; left: 83px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + email + '</p>');
+            newWindow.document.write('<p style="top: 374px; left: 83px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + whatsapp + '</p>');
+            newWindow.document.write('<p style="top: 399px; left: 83px; color: black; font-size: 13px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + endereco + '</p>');
+
+            newWindow.document.write('<p style="top: 483px; left: 280px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">' + consumo + ' Kwh</p>');
+            newWindow.document.write(`<p style="top: 483px; left: 510px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${ValorEnergia.toFixed(2)}</p>`);
+            newWindow.document.write(`<p style="top: 533px; left: 290px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${taxaIluminacao.toFixed(2)}</p>`);
+            newWindow.document.write(`<p style="top: 520px; left: 95px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${ValorAntigo.toFixed(2)}</p>`);
+
+            newWindow.document.write('<p style="top: 630px; left: 465px; color: black; font-size: 40px; background-color: transparent; padding: 10px; font-weight: bold; font-family: \'Fira Sans\', sans-serif;">' + desconto + '%' + '</p>');
+            newWindow.document.write(`<p style="top: 751px; left: 130px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${ValorNovo.toFixed(2)}</p>`);
+            newWindow.document.write(`<p style="top: 727px; left: 335px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${FaturaFlex.toFixed(2)}</p>`);
+            newWindow.document.write(`<p style="top: 776px; left: 335px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${FaturaConcessionaria.toFixed(2)}</p>`);
+
+            newWindow.document.write(`<p style="top: 873px; left: 170px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${EconomiaMensal.toFixed(2)}</p>`);
+            newWindow.document.write(`<p style="top: 873px; left: 450px; color: black; font-size: 18px; background-color: transparent; padding: 10px; font-family: \'Fira Sans\', sans-serif;">R$ ${EconomiaAnual.toFixed(2)}</p>`);
+
+            newWindow.document.write('</body></html>');
+            newWindow.document.close();
+            
+            newWindow.print();  
+            
+            newWindow.close();
+        }
+    </script>
+</body>
+</html>
